@@ -1,10 +1,16 @@
 //Symbol Name		Page Address
 //----------------	------------
-//	ASCtoHex                3026
+//	ASCtoHex                307B
+//	FINISHED                301B
 //	GETVALUES               3003
-//	POP                     300A
-//	PUSH                    3007
-//	VALIDATE                3004
-//	charStore               3025
-//	stackBase               3024
-//	startPrompt             300D
+//	INVALID                 3023
+//	MAXCOUNT                307A
+//	NEG30                   3078
+//	NEG39                   3077
+//	NEWLINE                 3079
+//	POP                     3020
+//	PUSH                    301D
+//	charStore               3076
+//	invalidPrompt           3040
+//	stackBase               3075
+//	startPrompt             3028
