@@ -271,6 +271,133 @@ SETZERO
 AND R3, R3, #0
 RET
 
+;----------------
+
+GETGRADE
+AND R0, R0, #0 ;Clear R0
+
+LD R3, NEG90 ; Calculate if the Test Score is an A
+ADD R4, R2, R3
+BRn NOTA
+LD R0, CHARA
+RET
+
+NOTA
+LD R3, NEG80
+ADD R4, R2, R3
+BRn NOTB
+LD R0, CHARB
+RET
+
+NOTB
+LD R3, NEG70
+ADD R4, R2, R3
+BRn NOTC
+LD R0, CHARC
+RET
+
+NOTC
+LD R3, NEG70
+ADD R4, R2, R3
+BRn NOTD
+LD R0, CHARD
+RET
+
+NOTD
+LD R0, CHARF
+RET
+
+
+;------------------------
+
+FINDMIN
+  LD R0, score1 ;Load test score 1 to R0
+  LD R1, score2 ;Load test score 2 to R1
+  NOT N2, R1
+  ADD R2, R2, #1 ;2s Compliment test score 2
+  ADD R2, R0, R2 ; R2=R0-R1, Test Score 1- Test Score 2
+  BRn CHECK2 ;If R1>R0, then use R0
+  LD R0, score2 ;else, set R0=R1
+CHECK2
+  LD R1, score3 ;Load test score 3 to R1
+  NOT R2, R1
+  ADD R2, R2, #1 ;2s Compliment test score 3
+  ADD R2, R0, R2 ;R2=R0-R2, Test Score Min-Test Score 3
+  BRn CHECK3
+  LD R0, score3
+CHECK3
+  LD R1, score4
+  NOT R2, R1
+  ADD R2, R2, #1
+  ADD R2, R0, R2
+  BRn CHECK4
+  LD R0, score4
+CHECK4
+  LD R1, score5
+  NOT R2, R1
+  ADD R2, R2, #1
+  ADD R2, R0, R2
+  BRn MINFIN
+  LD R0, score5
+MINFIN
+  RET
+
+;--------------------------
+
+FINDMAX
+  LD R0, score1
+  LD R1, score2
+  NOT R2, R0
+  ADD R2, R2, #1
+  ADD R2, R1, R2
+  BRn CHECKMAX2
+  LD R0, score2
+CHECKMAX2
+  LD R1, score3
+  NOT R2, R0
+  ADD R2, R2, #1
+  ADD R2, R1, R2
+  BRn CHECKMAX3
+  LD R0, score3
+CHECKMAX3
+  LD R1, score4
+  NOT R2, R0
+  ADD R2, R2, #1
+  ADD R2, R1, R2
+  BRn CHECKMAX4
+  LD R0, score4
+CHECKMAX4
+  LD R1, score5
+  NOT R2, R0
+  ADD R2, R2, #1
+  ADD R2, R1, R2
+  BRn MAXFIN
+  LD R0, score5
+MAXFIN
+  RET
+;--------------------
+
+FINDAVG
+  LD R0, score1 ;Load Test Scores and Sum them up
+  LD R1, score2
+  ADD R0, R0, R1
+  LD R1, score3
+  ADD R0, R0, R1
+  LD R1, score4
+  ADD R0, R0, R1
+  LD R1, score5
+  ADD R0, R0, R1
+  
+  RET
+
+;------------------
+
+
+
+
+
+
+
 ;Address locations==============================================================
 stackBase	.FILL x3200
 minValue	.FILL x3205 
@@ -290,6 +417,17 @@ NEG30		.FILL xFFD0	;Negative 30 hex for ASCII conversion (0 in ASCII)
 NEWLINE		.FILL x000A	;10 hex for newline in ASCII(10 hex = Newline in ASCII)
 MAXCOUNT 	.FILL x0003	;Max digits that the user may input (should't need more than the number 100)
 MAXNUMBERS	.FILL x0005 	;Max values the user can input
+CHARA  .FILL x0041 ;'A'
+CHARB  .FILL x0042 ;'B'
+CHARC  .FILL x0043 ;'C'
+CHARD  .FILL x0044 ;'D'
+CHARF  .FILL x0045 ;'F'
+NEG90  .FILL xFFA6 ;Negative 90 hex
+NEG80  .FILL xFFB0 ;Negative 80 hex
+NEG70  .FILL xFFBA ;Negative 70 hex
+NEG60  .FILL xFFC4 ;Negative 60 hex
+
+
 
 ;STRINGZ========================================================================
 startPrompt	.STRINGZ "Enter 5 values 0-100: \n"
