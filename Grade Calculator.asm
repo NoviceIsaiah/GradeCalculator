@@ -25,7 +25,11 @@
 LEA R0, startPrompt	;Loads starting prompt to user
 PUTS			;Displays prompt
 LD R6, stackBase	;Load stackBase onto R6
-;-------------------------------------------------------------------------------------
+
+;Set minValue to 100, if there is a smaller number then
+LD R0, HUNDRED
+STI R0, minValue 	;If value is smaller that will be the new minimum value
+
 
 ;Gets value and validates it. Input newline if finished
 GETVALUES
@@ -36,7 +40,6 @@ ADD R1, R0, #0		;Copy R0 to R1
 ADD R1, R1, #-10	;Check if input was a newline
 BRz FINISHED		;If newline then input is finished
 
-;-------------------------------------------------------------------------------------
 
 ;Input validation, checks if greater than 0-9 ASCII
 AND R1, R1, #0		;Clear R1
@@ -45,7 +48,6 @@ LD R2, NEG39		;R2 = -39 for range validation
 ADD R1, R1, R2		;Check if input is greater than 0-9
 BRp INVALID		;If so, go to invalid subroutine else continue
 
-;-------------------------------------------------------------------------------------
 
 ;Input validation, checks if less than 0-9 ASCII
 AND R1, R1, #0		;Clear R1
@@ -54,7 +56,6 @@ LD R2, NEG30		;R2 = -30
 ADD R1, R1, R2		;Check if input is less than 0-9 
 BRn INVALID		;If so, go to invalid subroutine else continue
 
-;-------------------------------------------------------------------------------------
 
 ;Push the inputted number 0-9 on the stack
 JSR PUSH		;Else push number onto stack
@@ -66,11 +67,10 @@ ADD R2, R2, R3		;Subtract counter from maxcount
 BRnz FINISHED		;Once 3 numbers 0-9 are inputted, grade value is inputed
 BR GETVALUES
 
-;-------------------------------------------------------------------------------------
 
 ;Validate number is 0-100
 FINISHED	
-JSR FINDSIZE 		;Find stack size
+JSR FINDSIZE 		;Find stack size (in R1)
 JSR CHECKDIGITS 	;Use stack size to find how many digits are in inputted value
 
 AND R2, R2, #0		;Clear registers used in last subroutine
@@ -85,7 +85,6 @@ LD  R3, NEG100		;Load -100 on R3
 ADD R2, R2, R3		;R2 = R2-100 
 BRp OUTOFRANGE		;Checks if greater than 100 if so then input again
 
-;-------------------------------------------------------------------------------------
 
 ;Find decimal value of input if in range
 AND R2, R2, #0		;Clear R2 (R2 = 0)
@@ -93,27 +92,25 @@ STI R2, oneDigit	;Clear oneDigit location
 STI R2, twoDigit	;Clear twoDigit location
 STI R2, thrDigit	;Clear thrDigit location
 
-;-------------------------------------------------------------------------------------
-
 ;After finding decimal value add one to counter since user needs to input 5 numbers
 LDI R2, inpCount	;Load current input count
 ADD R2, R2, #1		;Add one to input counter
 STI R2, inpCount	;Store input count
 
-AND R3, R3, #0		;Clear R3
-ADD R3, R3, #5		;R3 = 5
 
-;-------------------------------------------------------------------------------------
+
 
 ;Check how many numbers user inputed, if less than 5 then get another value
-LDI R2, inpCount	;Load input cound
+AND R3, R3, #0		;Clear R3
+ADD R3, R3, #5		;R3 = 5
+LDI R2, inpCount	;Load input count
 NOT R2, R2
 ADD R2, R2, #1		;Two's complement of input count (-R2)
 
 ADD R3, R3, R2		;R3 = R3-R2
 BRp GETVALUES		;Checks if input count is below 5, if so get another input
 
-;-------------------------------------------------------------------------------------	
+
 
 HALT 			;End Program
 
@@ -122,11 +119,13 @@ FINDSIZE
 AND R1, R1, #0		;Clear R1
 AND R2, R2, #0		;Clear R2
 AND R3, R3, #0		;Clear R3
+STI R1, curSize
 ADD R1, R6, #0		;Copy R6 (current pointer) to R1
 LD R2, stackBase	;Load stack base into R2
 NOT R2, R2		;
 ADD R2, R2, #1		;Two's complement of R2
 ADD R1, R1, R2		;Subrtract stackBase from pointer to get stack size
+STI R1, curSize
 RET
 
 ;-------------------------------------------------------------------------------------
@@ -157,63 +156,87 @@ BRz THREEDIGIT		;Check if number has three digits
 
 ONEDIGIT
 LD R2, NEG30		;Load -30 in hex for subtraction
-LDR R3, R6, #0		;Load value at pointer address
-ADD R3, R3, R2		;Subtract 30 from said value to convert from ASCII
-STI R3, oneDigit	;Store the value at oneDigit address
+
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
+JSR POP			;Pop for value at top of stack
+LDR R7, R1, #0		;Load return address
+
+ADD R0, R0, R2		;Subtract 30 from said value to convert from ASCII
+STI R0, oneDigit	;Store the value at oneDigit address
 RET
 
 TWODIGIT
+;Ones digit
 LD R2, NEG30		;Load -30 in hex for subtraction
-LDR R3, R6, #0		;Load value at pointer address
-ADD R3, R3, R2		;Subtract 30 from said value to convert from ASCII
-STI R3, oneDigit	;Store the value at oneDigit address
-LDR R3, R6, #-1		;Load value at address before pointer
-ADD R3, R3, R2		;Subtract 30 form said value to conver from ASCII
-AND R4, R4, #0		;Clear R4
-ADD R4, R4, #10		;R4 = 10
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
+JSR POP			;Pop for value at top of stack
+LDR R7, R1, #0		;Load return address
+ADD R0, R0, R2		;Subtract 30 from said value to convert from ASCII
+STI R0, oneDigit	;Store the value at oneDigit address
 
-AND R0, R0, #0		;Clear R0
-ADD R0, R0, #-1         ;Push stack to save R7
-STR R7, R0, #0		;Store R7 return address 
+;Tens digit
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
+JSR POP			;Pop for value at top of stack
+LDR R7, R1, #0		;Load return address
+ADD R0, R0, R2		;Subtract 30 form said value to conver from ASCII
+AND R3, R3, #0		;Clear R3
+ADD R3, R3, #10		;R3 = 10
+AND R1, R1, #1		;Clear R0
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
 JSR MULTIPLY		;Multiply subroutine
-STI R5, twoDigit	;Store product in R5
-LDR R7, R0, #0		;Load return address
-ADD R0, R0, #1		;Pop stack for R7
+LDR R7, R1, #0		;Load return address
+STI R4, twoDigit	;Store product in R4
 RET			;Return
 
 THREEDIGIT
+;Ones digit
 LD R2, NEG30		;Load -30 in hex for subtraction
-LDR R3, R6, #0		;Load value at pointer address
-ADD R3, R3, R2		;Subtract 30 from said value to convert from ASCII
-STI R3, oneDigit	;Store the value at oneDigit address
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
+JSR POP			;Pop for value at top of stack
+LDR R7, R1, #0		;Load return address
+ADD R0, R0, R2		;Subtract 30 from said value to convert from ASCII
+STI R0, oneDigit	;Store the value at oneDigit address
 
-LDR R3, R6, #-1		;Load value at address before pointer
-ADD R3, R3, R2		;Subtract 30 form said value to convert from ASCII
-AND R4, R4, #0		;Clear R4
-ADD R4, R4, #10		;R4 = 10
-
-AND R0, R0, #0		;Clear R0
-ADD R0, R0, #-1         ;Push stack to save R7
-STR R7, R0, #0		;Store R7 return address 
+;Tens digit
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
+JSR POP			;Pop for value at top of stack
+LDR R7, R1, #0		;Load return address
+ADD R0, R0, R2		;Subtract 30 form said value to conver from ASCII
+AND R3, R3, #0		;Clear R3
+ADD R3, R3, #10		;R3 = 10
+AND R1, R1, #1		;Clear R0
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
 JSR MULTIPLY		;Multiply subroutine
-STI R5, twoDigit	;Store product in R5
-AND R5, R5, #0
-LDR R7, R0, #0		;Load return address
-ADD R0, R0, #1		;Pop stack for R7
+LDR R7, R1, #0		;Load return address
+STI R4, twoDigit	;Store product in R5
 
-LDR R3, R6, #-2		;Load bottom of stack value onto R3
-ADD R3, R3, R2		;Subtract 30 from value to convert from ASCII
-LD  R4, HUNDRED 	;Load 100 onto R4 to use for multiplier
-
-;Save return address so that we can use MULTIPLY subroutine in subroutine
-AND R0, R0, #0		;Clear R0
-ADD R0, R0, #-1         ;Push stack to save R7
-STR R7, R0, #0		;Store R7 return address 
+;Hundreds digit
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
+JSR POP			;Pop for value at top of stack
+LDR R7, R1, #0		;Load return address
+ADD R0, R0, R2		;Subtract 30 form said value to conver from ASCII
+LD R3, HUNDRED		;R3=100 for multiplier
+AND R1, R1, #1		;Clear R1
+ADD R1, R1, #-1         ;Push stack to save R7
+STR R7, R1, #0		;Store R7 return address 
 JSR MULTIPLY		;Multiply subroutine
-STI R5, thrDigit	;Store product in R5
-LDR R7, R0, #0		;Load return address
-ADD R0, R0, #1		;Pop stack for R7
-RET			;Return
+LDR R7, R1, #0		;Load return address
+STI R4, thrDigit	;Store product in R5
+RET		
 
 ;-------------------------------------------------------------------------------------
 
@@ -240,7 +263,7 @@ RET
 
 ;Pop value off of stack
 POP 
-LDR R0, R6, #0		;Load top of stack value
+LDR R0, R6, #0		;Load top of stack value to R0
 ADD R6, R6, #-1		;Subtract one from pointer
 RET
 
@@ -290,24 +313,25 @@ BR GETVALUES		;Else get another value
 
 ;Multiply subroutine
 MULTIPLY
-ADD R4, R4, #0		;Checks if multiplier is 0  	
+AND R4, R4, #0
+ADD R3, R3, #0		;Checks if multiplier is 0  	
 BRz SETZERO		;If so set product to 0
 MULTLOOP		;Multiply loop start
-ADD R5, R5, R3		;Add 
-ADD R4, R4, #-1		;Subtract from counter
+ADD R4, R4, R0		;Add 
+ADD R3, R3, #-1		;Subtract from counter
 BRp MULTLOOP		;If counter is still postive, go back to loop
 RET			;Else return
 
 SETZERO 
-AND R3, R3, #0		;Set product to zero
+AND R0, R0, #0		;Set product to zero
 RET			;Return
 
 ;-------------------------------------------------------------------------------------
 
 GETGRADE
-AND R0, R0, #0 		;Clear R0
+AND R0, R0, #0 ;Clear R0
 
-LD R3, NEG90 		; Calculate if the Test Score is an A
+LD R3, NEG90 ; Calculate if the Test Score is an A
 ADD R4, R2, R3
 BRn NOTA
 LD R0, CHARA
@@ -338,7 +362,8 @@ NOTD
 LD R0, CHARF
 RET
 
-;-------------------------------------------------------------------------------------
+
+;------------------------
 
 FINDMIN
   LD R0, score1 ;Load test score 1 to R0
@@ -372,7 +397,7 @@ CHECK4
 MINFIN
   RET
 
-;-------------------------------------------------------------------------------------
+;--------------------------
 
 FINDMAX
   LD R0, score1
@@ -405,8 +430,7 @@ CHECKMAX4
   LD R0, score5
 MAXFIN
   RET
-
-;-------------------------------------------------------------------------------------
+;--------------------
 
 FINDAVG
   LD R0, score1 ;Load Test Scores and Sum them up
@@ -431,6 +455,8 @@ twoDigit	.FILL x3209
 thrDigit	.FILL x320A
 decValue	.FILL x320B
 inpCount	.FILL x320C
+curSize		.FILL x320D
+curLetter	.FILL x320E
 
 ;Filled values=========================================================================
 HUNDRED		.FILL x0064	;100 hex
@@ -449,8 +475,6 @@ NEG90  		.FILL xFFA6 	;Negative 90 hex
 NEG80  		.FILL xFFB0 	;Negative 80 hex
 NEG70  		.FILL xFFBA 	;Negative 70 hex
 NEG60  		.FILL xFFC4 	;Negative 60 hex
-
-
 
 ;Strings===============================================================================
 startPrompt	.STRINGZ "Enter 5 values 0-100: \n"
