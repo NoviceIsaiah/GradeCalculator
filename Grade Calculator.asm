@@ -16,12 +16,13 @@
 ;	Run program
 ;	Input 5 integer values (0-100)
 ;	Read display for results
-
+;
 ;Program Execution====================================================================
 
 .ORIG x3000
 
 ;Starting prompt displayed
+startPrompt	.STRINGZ "Enter 5 values 0-100: \n"
 LEA R0, startPrompt	;Loads starting prompt to user
 PUTS			;Displays prompt
 LD R6, stackBase	;Load stackBase onto R6
@@ -85,22 +86,24 @@ LD  R3, NEG100		;Load -100 on R3
 ADD R2, R2, R3		;R2 = R2-100 
 BRp OUTOFRANGE		;Checks if greater than 100 if so then input again
 
-;Else if in range then add to average
+;IF IN RANGE CONTINUE WITH PROCESS
+;If stack size if 3 (3 digits) add newline
+LDI R2, curSize		;Gets current size of the stack
+AND R3, R3, #0		
+ADD R2, R2, #-3		;Checks to see if the stack was a size of 3 to add a newline
+BRn SKIP		;If not then don't add newline
+LD  R0, NEWLINE		;Else add newline
+OUT
+
+SKIP
+;If in range then add to average
 LDI R2, decValue	;Load current decimal value
 LDI R3, avgValue	;Load current avgerage valueg
 ADD R3, R3, R2		;Add decimal value to average value for later
 STI R3, avgValue	;Store said value
 
-LDI R2, curSize
-AND R3, R3, #0
-ADD R2, R2, #-3
-BRn SKIP
-LD  R0, NEWLINE
-OUT
+JSR FINDMIN
 
-SKIP
-
-;Clear all data from last number
 AND R3, R3, #0		
 STI R3, decValue	
 STI R3, oneDigit
@@ -228,6 +231,7 @@ LDR R7, R1, #0		;Load return address
 STI R4, twoDigit	;Store product in R5
 
 ;Hundreds digit
+HUNDRED	.FILL x0064	;100 hex
 AND R1, R1, #0		;Clear R1
 ADD R1, R1, #-1         ;Push stack to save R7
 STR R7, R1, #0		;Store R7 return address 
@@ -326,13 +330,29 @@ BR GETVALUES		;Else get another value
 
 ;-------------------------------------------------------------------------------------
 
+FINDMIN
+LDI R1, decValue
+NOT R1, R1
+ADD R1, R1, #1
+LDI R2, minValue
+ADD R2, R2, R1
+BRnz SKIPMIN
+LDI R1, decValue
+STI R1, minValue
+RET
+
+SKIPMIN
+RET
+
+;-------------------------------------------------------------------------------------
+
 ;Multiply subroutine
 MULTIPLY
 AND R4, R4, #0
 ADD R3, R3, #0		;Checks if multiplier is 0  	
 BRz SETZERO		;If so set product to 0
 MULTLOOP		;Multiply loop start
-ADD R4, R4, R0		;Add 
+ADD R4, R4, R0		;Add R0 to R4 for product
 ADD R3, R3, #-1		;Subtract from counter
 BRp MULTLOOP		;If counter is still postive, go back to loop
 RET			;Else return
@@ -343,86 +363,8 @@ RET			;Return
 
 ;-------------------------------------------------------------------------------------
 
-FINDMIN
-  LD R0, score1 ;Load test score 1 to R0
-  LD R1, score2 ;Load test score 2 to R1
-  NOT R2, R1
-  ADD R2, R2, #1 ;2s Compliment test score 2
-  ADD R2, R0, R2 ; R2=R0-R1, Test Score 1- Test Score 2
-  BRn CHECK2 ;If R1>R0, then use R0
-  LD R0, score2 ;else, set R0=R1
-CHECK2
-  LD R1, score3 ;Load test score 3 to R1
-  NOT R2, R1
-  ADD R2, R2, #1 ;2s Compliment test score 3
-  ADD R2, R0, R2 ;R2=R0-R2, Test Score Min-Test Score 3
-  BRn CHECK3
-  LD R0, score3
-CHECK3
-  LD R1, score4
-  NOT R2, R1
-  ADD R2, R2, #1
-  ADD R2, R0, R2
-  BRn CHECK4
-  LD R0, score4
-CHECK4
-  LD R1, score5
-  NOT R2, R1
-  ADD R2, R2, #1
-  ADD R2, R0, R2
-  BRn MINFIN
-  LD R0, score5
-MINFIN
-  RET
-
-;--------------------------
-
-FINDMAX
-  LD R0, score1
-  LD R1, score2
-  NOT R2, R0
-  ADD R2, R2, #1
-  ADD R2, R1, R2
-  BRn CHECKMAX2
-  LD R0, score2
-CHECKMAX2
-  LD R1, score3
-  NOT R2, R0
-  ADD R2, R2, #1
-  ADD R2, R1, R2
-  BRn CHECKMAX3
-  LD R0, score3
-CHECKMAX3
-  LD R1, score4
-  NOT R2, R0
-  ADD R2, R2, #1
-  ADD R2, R1, R2
-  BRn CHECKMAX4
-  LD R0, score4
-CHECKMAX4
-  LD R1, score5
-  NOT R2, R0
-  ADD R2, R2, #1
-  ADD R2, R1, R2
-  BRn MAXFIN
-  LD R0, score5
-MAXFIN
-  RET
-;--------------------
-
-FINDAVG
-  LD R0, score1 ;Load Test Scores and Sum them up
-  LD R1, score2
-  ADD R0, R0, R1
-  LD R1, score3
-  ADD R0, R0, R1
-  LD R1, score4
-  ADD R0, R0, R1
-  LD R1, score5
-  ADD R0, R0, R1
-  
-  RET
-
+;Divide subroutine (R0 is dividend, R1 is divisor, R2 is quotient, R0 will act as remainder)
+;HUNDRED		.FILL x0064	;100 hex
 ;Address locations=====================================================================
 stackBase	.FILL x3200
 minValue	.FILL x3205 
@@ -437,7 +379,7 @@ curSize		.FILL x320D
 curLetter	.FILL x320E
 
 ;Filled values=========================================================================
-HUNDRED		.FILL x0064	;100 hex
+;HUNDRED		.FILL x0064	;100 hex
 ZERO		.FILL x0000	;0 hex
 NEG100		.FILL xFF9C 	;Negative 100 hex
 NEG39 		.FILL xFFC7	;Negative 39 hex for ASCII conversion (9 in ASCII)
@@ -456,8 +398,6 @@ NEG70  		.FILL xFFBA 	;Negative 70 hex
 NEG60  		.FILL xFFC4 	;Negative 60 hex
 
 ;Strings===============================================================================
-startPrompt	.STRINGZ "Enter 5 values 0-100: \n"
 invalidPrompt	.STRINGZ "Input was invalid. Try entering a number 0-9 again.\n"
 rangePrompt	.STRINGZ "Range was invalid. Try entering a number 0-100 again.\n"
-
 .END
