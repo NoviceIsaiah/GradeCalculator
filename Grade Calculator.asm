@@ -69,70 +69,79 @@ BR GETVALUES
 
 
 ;Validate number is 0-100
-FINISHED	
+FINISHED
 JSR FINDSIZE 		;Find stack size (in R1)
 JSR CHECKDIGITS 	;Use stack size to find how many digits are in inputted value
 
 AND R2, R2, #0		;Clear registers used in last subroutine
 AND R3, R3, #0		;Clear R3
 AND R4, R4, #0		;Clear R4
-AND R5, R5, #0		;Clear R5
 
-STI R5, decValue
+
+STI R5, decValue	;Clear decValue
 JSR GETDEC		;Get the decimal equvialent and validate 0-100
 LDI R2, decValue	;Load current decimal value on R2
 LD  R3, NEG100		;Load -100 on R3
 ADD R2, R2, R3		;R2 = R2-100 
 BRp OUTOFRANGE		;Checks if greater than 100 if so then input again
 
+;Else if in range then add to average
+LDI R2, decValue	;Load current decimal value
+LDI R3, avgValue	;Load current avgerage valueg
+ADD R3, R3, R2		;Add decimal value to average value for later
+STI R3, avgValue	;Store said value
 
-;Find decimal value of input if in range
-AND R2, R2, #0		;Clear R2 (R2 = 0)
-STI R2, oneDigit	;Clear oneDigit location
-STI R2, twoDigit	;Clear twoDigit location
-STI R2, thrDigit	;Clear thrDigit location
+LDI R2, curSize
+AND R3, R3, #0
+ADD R2, R2, #-3
+BRn SKIP
+LD  R0, NEWLINE
+OUT
+
+SKIP
+
+;Clear all data from last number
+AND R3, R3, #0		
+STI R3, decValue	
+STI R3, oneDigit
+STI R3, twoDigit
+STI R3, thrDigit
 
 ;After finding decimal value add one to counter since user needs to input 5 numbers
 LDI R2, inpCount	;Load current input count
 ADD R2, R2, #1		;Add one to input counter
 STI R2, inpCount	;Store input count
 
-
-
-
 ;Check how many numbers user inputed, if less than 5 then get another value
-AND R3, R3, #0		;Clear R3
-ADD R3, R3, #5		;R3 = 5
+AND R1, R1, #0		;Clear R1
+ADD R1, R1, #5		;R1 = 5
 LDI R2, inpCount	;Load input count
 NOT R2, R2
 ADD R2, R2, #1		;Two's complement of input count (-R2)
-
-ADD R3, R3, R2		;R3 = R3-R2
+ADD R1, R1, R2		;R1 = R1-R2
 BRp GETVALUES		;Checks if input count is below 5, if so get another input
-
-
 
 HALT 			;End Program
 
 ;SUBROUTINES==========================================================================
 FINDSIZE
 AND R1, R1, #0		;Clear R1
-AND R2, R2, #0		;Clear R2
-AND R3, R3, #0		;Clear R3
-STI R1, curSize
+AND R2, R2, #0
+AND R3, R3, #0
+STI R1, curSize		;Clear current stack size to find new stack size
 ADD R1, R6, #0		;Copy R6 (current pointer) to R1
 LD R2, stackBase	;Load stack base into R2
 NOT R2, R2		;
 ADD R2, R2, #1		;Two's complement of R2
 ADD R1, R1, R2		;Subrtract stackBase from pointer to get stack size
-STI R1, curSize
+STI R1, curSize		;Store current size into R1
 RET
 
 ;-------------------------------------------------------------------------------------
 
 CHECKDIGITS
 ;Check for one digit first
-ADD R3, R1, #0		;Copy R1 (stack size) to R3
+LDI R3, curSize		;Load current size onto R3
 AND R2, R2, #0		;Clear R2
 ADD R2, R2, #-1		;Load -1 onto R2 for subtraction
 ADD R3, R3, R2		;Subtract 1 from stack size
@@ -140,29 +149,25 @@ BRz ONEDIGIT 		;Check if number has one digit
 
 ;Check for two digits
 AND R2, R2, #0		;Clear R2
-AND R3, R3, #0		;Clear R3
-ADD R3, R1, #0		;Copy R1 (stack size) to R3
+LDI R3, curSize		;Load current size onto R3
 ADD R2, R2, #-2		;Load -2 onto R2 for subtraction
 ADD R3, R3, R2		;Subtract 2 from stack size
 BRz TWODIGIT		;Check if number has two digits
 
 ;Check for three digits
 AND R2, R2, #0		;Clear R2
-AND R3, R3, #0		;Clear R3
-ADD R3, R1, #0		;Copy R1 (stack size) to R3
+LDI R3, curSize		;Load current size onto R3
 ADD R2, R2, #-3		;Load -3 onto R2 for subtraction
 ADD R3, R3, R2		;Subtract 3 from stack size
 BRz THREEDIGIT		;Check if number has three digits
 
 ONEDIGIT
 LD R2, NEG30		;Load -30 in hex for subtraction
-
 AND R1, R1, #0		;Clear R1
 ADD R1, R1, #-1         ;Push stack to save R7
 STR R7, R1, #0		;Store R7 return address 
 JSR POP			;Pop for value at top of stack
 LDR R7, R1, #0		;Load return address
-
 ADD R0, R0, R2		;Subtract 30 from said value to convert from ASCII
 STI R0, oneDigit	;Store the value at oneDigit address
 RET
@@ -262,8 +267,10 @@ RET
 ;-------------------------------------------------------------------------------------
 
 ;Pop value off of stack
-POP 
+POP
 LDR R0, R6, #0		;Load top of stack value to R0
+AND R4, R4, #0
+STR R4, R6, #0
 ADD R6, R6, #-1		;Subtract one from pointer
 RET
 
@@ -276,7 +283,15 @@ LD R0, NEWLINE		;Load newline
 OUT			;Display it
 LEA R0, invalidPrompt	;Load invalidPrompt
 PUTS			;Display prompt
+LDI R1, curSize		;Get current size of stack
+BRp POPSTACK		;If there is a stack pop it
 BR GETVALUES		;Get another value
+
+POPSTACK		;Pop entire stack then get another value
+JSR POP
+ADD R1, R1, #-1
+BRp POPSTACK
+BR  GETVALUES
 
 ;-------------------------------------------------------------------------------------
 
@@ -323,47 +338,10 @@ BRp MULTLOOP		;If counter is still postive, go back to loop
 RET			;Else return
 
 SETZERO 
-AND R0, R0, #0		;Set product to zero
+AND R4, R4, #0		;Set product to zero
 RET			;Return
 
 ;-------------------------------------------------------------------------------------
-
-GETGRADE
-AND R0, R0, #0 ;Clear R0
-
-LD R3, NEG90 ; Calculate if the Test Score is an A
-ADD R4, R2, R3
-BRn NOTA
-LD R0, CHARA
-RET
-
-NOTA
-LD R3, NEG80
-ADD R4, R2, R3
-BRn NOTB
-LD R0, CHARB
-RET
-
-NOTB
-LD R3, NEG70
-ADD R4, R2, R3
-BRn NOTC
-LD R0, CHARC
-RET
-
-NOTC
-LD R3, NEG70
-ADD R4, R2, R3
-BRn NOTD
-LD R0, CHARD
-RET
-
-NOTD
-LD R0, CHARF
-RET
-
-
-;------------------------
 
 FINDMIN
   LD R0, score1 ;Load test score 1 to R0
@@ -460,6 +438,7 @@ curLetter	.FILL x320E
 
 ;Filled values=========================================================================
 HUNDRED		.FILL x0064	;100 hex
+ZERO		.FILL x0000	;0 hex
 NEG100		.FILL xFF9C 	;Negative 100 hex
 NEG39 		.FILL xFFC7	;Negative 39 hex for ASCII conversion (9 in ASCII)
 NEG30		.FILL xFFD0	;Negative 30 hex for ASCII conversion (0 in ASCII)
