@@ -22,6 +22,10 @@
 .ORIG x3000
 
 ;Starting prompt displayed
+maxPrompt 	.STRINGZ "Max: "
+minPrompt	.STRINGZ "Min: "
+avgPrompt	.STRINGZ "Avg: "
+rangePrompt	.STRINGZ "Range was invalid. Try entering a number 0-100 again.\n"
 startPrompt	.STRINGZ "Enter 5 values 0-100: \n"
 LEA R0, startPrompt	;Loads starting prompt to user
 PUTS			;Displays prompt
@@ -103,6 +107,16 @@ ADD R3, R3, R2		;Add decimal value to average value for later
 STI R3, avgValue	;Store said value
 
 JSR FINDMIN
+JSR FINDMAX
+LDI R1, decValue
+JSR FINDGRADE
+
+LDI R0, curLetter
+OUT
+LD R0, NEWLINE
+OUT
+LD R0, NEWLINE
+OUT
 
 AND R3, R3, #0		
 STI R3, decValue	
@@ -124,7 +138,75 @@ ADD R2, R2, #1		;Two's complement of input count (-R2)
 ADD R1, R1, R2		;R1 = R1-R2
 BRp GETVALUES		;Checks if input count is below 5, if so get another input
 
+;Display Max
+LEA R0, maxPrompt
+PUTS
+LDI R1, maxValue
+JSR FINDGRADE
+LDI R0, curLetter
+OUT
+LD R0, NEWLINE
+OUT
+
+;Display Min
+LEA R0, minPrompt
+PUTS
+LDI R1, minValue
+JSR FINDGRADE
+LDI R0, curLetter
+OUT
+LD R0, NEWLINE
+OUT
+
+;Find Average
+LDI R0, avgValue
+JSR DIVIDEBY5
+STI R2, avgValue
+
+;Display Average
+LEA R0, avgPrompt
+PUTS
+LDI R1, avgValue
+JSR FINDGRADE
+LDI R0, curLetter
+OUT
+LD R0, NEWLINE
+OUT
+
 HALT 			;End Program
+
+;Address locations=====================================================================
+stackBase	.FILL x3200
+minValue	.FILL x3205 
+maxValue	.FILL x3206
+avgValue	.FILL x3207
+oneDigit	.FILL x3208
+twoDigit	.FILL x3209
+thrDigit	.FILL x320A
+decValue	.FILL x320B
+inpCount	.FILL x320C
+curSize		.FILL x320D
+minSize		.FILL x3210
+minOne		.FILL x3211
+minTwo		.FILL x3212
+minThr		.FILL x3213
+maxSize		.FILL x3215
+maxOne		.FILL x3216
+maxTwo		.FILL x3217
+maxThr		.FILL x3218
+
+;Filled values=========================================================================
+NEWLINE		.FILL x000A	;10 hex for newline in ASCII(10 hex = Newline in ASCII)
+NEG30		.FILL xFFD0	;Negative 30 hex for ASCII conversion (0 in ASCII)
+NEG39 		.FILL xFFC7	;Negative 39 hex for ASCII conversion (9 in ASCII)
+NEG100		.FILL xFF9C 	;Negative 100 hex
+NEG90  		.FILL xFFA6 	;Negative 90 hex
+NEG80  		.FILL xFFB0 	;Negative 80 hex
+NEG70  		.FILL xFFBA 	;Negative 70 hex
+NEG60  		.FILL xFFC4 	;Negative 60 hex
+MAXCOUNT 	.FILL x0003	;Max digits that the user may input (should't need more than the number 100)
+MAXNUMBERS	.FILL x0005 	;Max values the user can input
+curLetter	.FILL x320E
 
 ;SUBROUTINES==========================================================================
 FINDSIZE
@@ -139,6 +221,56 @@ ADD R2, R2, #1		;Two's complement of R2
 ADD R1, R1, R2		;Subrtract stackBase from pointer to get stack size
 STI R1, curSize		;Store current size into R1
 RET
+
+;-------------------------------------------------------------------------------------
+
+;Checks if value inputted is out of range (greater than 100)
+OUTOFRANGE
+AND R1, R1, #0		;Clear R1-R3
+AND R2, R2, #0
+AND R3, R3, #0
+STI R3, decValue	;Clear all digit locations
+STI R3, oneDigit
+STI R3, twoDigit
+STI R3, thrDigit
+LD R0, NEWLINE		;Load and display newline
+OUT
+LEA R0, rangePrompt	;Load rangePrompt
+PUTS			;Display rangePrompt
+
+;Pop stack completely to restart
+ADD R1, R6, #0 		;Copy pointer (R6) to R1
+LD  R2, stackBase	;Copy stack base onto R2
+NOT R2, R2
+ADD R2, R2, #1		;Two's complement of stack
+ADD R1, R1, R2		;Get stack size by subtracting stackbase from pointer
+BRp CONT		;If there is a stack size, then continue to pop stack
+BR GETVALUES		;Else go back to getting another value
+
+CONT	
+JSR POP			;Pop last value
+ADD R1, R1, #-1		;Subtrack from stacksize counter
+BRp CONT		;If positive continue to pop stack
+BR GETVALUES		;Else get another value
+
+;-------------------------------------------------------------------------------------
+
+;Invalid subrotuine for if value is greater than 100
+INVALID
+AND R3, R3, #0		;Clear counter for character count
+LD R0, NEWLINE		;Load newline
+OUT			;Display it
+LEA R0, invalidPrompt	;Load invalidPrompt
+PUTS			;Display prompt
+LDI R1, curSize		;Get current size of stack
+BRp POPSTACK		;If there is a stack pop it
+BR GETVALUES		;Get another value
+
+POPSTACK		;Pop entire stack then get another value
+JSR POP
+ADD R1, R1, #-1
+BRp POPSTACK
+BR  GETVALUES
 
 ;-------------------------------------------------------------------------------------
 
@@ -247,7 +379,6 @@ LDR R7, R1, #0		;Load return address
 STI R4, thrDigit	;Store product in R5
 RET		
 
-;-------------------------------------------------------------------------------------
 
 ;Get decimal value from ASCII characters inputted
 GETDEC			
@@ -280,56 +411,6 @@ RET
 
 ;-------------------------------------------------------------------------------------
 
-;Invalid subrotuine for if value is greater than 100
-INVALID
-AND R3, R3, #0		;Clear counter for character count
-LD R0, NEWLINE		;Load newline
-OUT			;Display it
-LEA R0, invalidPrompt	;Load invalidPrompt
-PUTS			;Display prompt
-LDI R1, curSize		;Get current size of stack
-BRp POPSTACK		;If there is a stack pop it
-BR GETVALUES		;Get another value
-
-POPSTACK		;Pop entire stack then get another value
-JSR POP
-ADD R1, R1, #-1
-BRp POPSTACK
-BR  GETVALUES
-
-;-------------------------------------------------------------------------------------
-
-;Checks if value inputted is out of range (greater than 100)
-OUTOFRANGE
-AND R1, R1, #0		;Clear R1-R3
-AND R2, R2, #0
-AND R3, R3, #0
-STI R3, decValue	;Clear all digit locations
-STI R3, oneDigit
-STI R3, twoDigit
-STI R3, thrDigit
-LD R0, NEWLINE		;Load and display newline
-OUT
-LEA R0, rangePrompt	;Load rangePrompt
-PUTS			;Display rangePrompt
-
-;Pop stack completely to restart
-ADD R1, R6, #0 		;Copy pointer (R6) to R1
-LD  R2, stackBase	;Copy stack base onto R2
-NOT R2, R2
-ADD R2, R2, #1		;Two's complement of stack
-ADD R1, R1, R2		;Get stack size by subtracting stackbase from pointer
-BRp CONT		;If there is a stack size, then continue to pop stack
-BR GETVALUES		;Else go back to getting another value
-
-CONT	
-JSR POP			;Pop last value
-ADD R1, R1, #-1		;Subtrack from stacksize counter
-BRp CONT		;If positive continue to pop stack
-BR GETVALUES		;Else get another value
-
-;-------------------------------------------------------------------------------------
-
 FINDMIN
 LDI R1, decValue
 NOT R1, R1
@@ -339,9 +420,41 @@ ADD R2, R2, R1
 BRnz SKIPMIN
 LDI R1, decValue
 STI R1, minValue
+LDI R1, curSize
+STI R1, minSize
+LDI R1, oneDigit
+STI R1, minOne
+LDI R1, twoDigit
+STI R1, minTwo
+LDI R1, thrDigit
+STI R1, minThr
 RET
 
 SKIPMIN
+RET
+
+;-------------------------------------------------------------------------------------
+
+FINDMAX
+LDI R1, decValue
+LDI R2, maxValue
+NOT R2, R2
+ADD R2, R2, #1
+ADD R1, R1, R2
+BRnz SKIPMAX
+LDI R1, decValue
+STI R1, maxValue
+LDI R1, curSize
+STI R1, maxSize
+LDI R1, oneDigit
+STI R1, maxOne
+LDI R1, twoDigit
+STI R1, maxTwo
+LDI R1, thrDigit
+STI R1, maxThr
+RET
+
+SKIPMAX
 RET
 
 ;-------------------------------------------------------------------------------------
@@ -364,40 +477,77 @@ RET			;Return
 ;-------------------------------------------------------------------------------------
 
 ;Divide subroutine (R0 is dividend, R1 is divisor, R2 is quotient, R0 will act as remainder)
-;HUNDRED		.FILL x0064	;100 hex
-;Address locations=====================================================================
-stackBase	.FILL x3200
-minValue	.FILL x3205 
-maxValue	.FILL x3206
-avgValue	.FILL x3207
-oneDigit	.FILL x3208
-twoDigit	.FILL x3209
-thrDigit	.FILL x320A
-decValue	.FILL x320B
-inpCount	.FILL x320C
-curSize		.FILL x320D
-curLetter	.FILL x320E
+DIVIDEBY5
+AND R1, R1, #0
+AND R2, R2, #0
+ADD R1, R1, #-5
+DIVLOOP
+ADD R2, R2, #1
+ADD R0, R0, R1
+BRp DIVLOOP
+ADD R0, R0, #0
+BRz CLEANDIV
+ADD R2, R2, #-1
+RET
+
+CLEANDIV
+RET
+
+;-------------------------------------------------------------------------------------
+
+FINDGRADE
+LD  R2, NEG90
+ADD R3, R1, R2
+BRzp AGRADE
+
+AND R3, R3, #0
+LD  R2, NEG80
+ADD R3, R1, R2
+BRzp BGRADE
+
+AND R3, R3, #0
+LD  R2, NEG70
+ADD R3, R1, R2
+BRzp CGRADE
+
+AND R3, R3, #0
+LD  R2, NEG60
+ADD R3, R1, R2
+BRzp DGRADE
+
+LD  R1, CHARF
+STI R1, curLetter
+RET
+
+;-----------------
+AGRADE 
+LD  R1, CHARA
+STI R1, curLetter
+RET
+
+BGRADE
+LD  R1, CHARB
+STI R1, curLetter
+RET
+
+CGRADE
+LD  R1, CHARC
+STI R1, curLetter
+RET
+
+DGRADE
+LD  R1, CHARD
+STI R1, curLetter
+RET
 
 ;Filled values=========================================================================
-;HUNDRED		.FILL x0064	;100 hex
 ZERO		.FILL x0000	;0 hex
-NEG100		.FILL xFF9C 	;Negative 100 hex
-NEG39 		.FILL xFFC7	;Negative 39 hex for ASCII conversion (9 in ASCII)
-NEG30		.FILL xFFD0	;Negative 30 hex for ASCII conversion (0 in ASCII)
-NEWLINE		.FILL x000A	;10 hex for newline in ASCII(10 hex = Newline in ASCII)
-MAXCOUNT 	.FILL x0003	;Max digits that the user may input (should't need more than the number 100)
-MAXNUMBERS	.FILL x0005 	;Max values the user can input
 CHARA  		.FILL x0041 	;'A'
 CHARB  		.FILL x0042 	;'B'
 CHARC  		.FILL x0043 	;'C'
 CHARD  		.FILL x0044 	;'D'
-CHARF  		.FILL x0045 	;'F'
-NEG90  		.FILL xFFA6 	;Negative 90 hex
-NEG80  		.FILL xFFB0 	;Negative 80 hex
-NEG70  		.FILL xFFBA 	;Negative 70 hex
-NEG60  		.FILL xFFC4 	;Negative 60 hex
+CHARF  		.FILL x0046 	;'F'
 
 ;Strings===============================================================================
 invalidPrompt	.STRINGZ "Input was invalid. Try entering a number 0-9 again.\n"
-rangePrompt	.STRINGZ "Range was invalid. Try entering a number 0-100 again.\n"
 .END
